@@ -133,3 +133,80 @@ def render_meteogram(
     full_img.paste(left_img.resize((left_w, total_h)), (0, 0))
 
     return full_img
+
+
+def render_right_panel(
+    data: ModelData,
+    width: int = 200,
+    height: int = 480,
+    model_info: str = "",
+) -> Image.Image:
+    """Render the right 1/4 sidebar with 24h hourly detail."""
+    img = Image.new("RGB", (width, height), BG_COLOR)
+    draw = ImageDraw.Draw(img)
+
+    try:
+        font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 18)
+        font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
+        font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 10)
+        font_icon = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
+    except (IOError, OSError):
+        font_large = ImageFont.load_default()
+        font_medium = ImageFont.load_default()
+        font_small = ImageFont.load_default()
+        font_icon = ImageFont.load_default()
+
+    # Draw left border separator
+    draw.line([(0, 0), (0, height)], fill=TEXT_COLOR, width=2)
+
+    y = 8
+    pad = 8
+
+    # --- Current conditions header ---
+    if data.times and data.weather_code and data.temperature:
+        icon = wmo_to_icon(data.weather_code[0])
+        desc = wmo_to_description(data.weather_code[0])
+        temp = f"{data.temperature[0]:.0f}°C"
+
+        draw.text((pad, y), f"{icon} {temp}", fill=TEXT_COLOR, font=font_large)
+        y += 24
+        draw.text((pad, y), desc, fill=ACCENT_COLOR, font=font_medium)
+        y += 18
+
+    # Separator line
+    draw.line([(pad, y), (width - pad, y)], fill=TEXT_COLOR, width=1)
+    y += 6
+
+    # --- Hourly rows (next 24h) ---
+    max_rows = min(24, len(data.times))
+    row_h = min(16, (height - y - 50) // max_rows) if max_rows > 0 else 16
+
+    for i in range(max_rows):
+        if y + row_h > height - 45:
+            break
+
+        time_str = data.times[i]
+        hour = time_str.split("T")[1][:5] if "T" in time_str else time_str
+        icon = wmo_to_icon(data.weather_code[i]) if i < len(data.weather_code) else ""
+        temp = f"{data.temperature[i]:.0f}°" if i < len(data.temperature) else ""
+        wind = f"{data.wind_speed[i]:.0f}m/s" if i < len(data.wind_speed) else ""
+
+        draw.text((pad, y), hour, fill=TEXT_COLOR, font=font_small)
+        draw.text((pad + 40, y), icon, fill=TEXT_COLOR, font=font_icon)
+        draw.text((pad + 60, y), temp, fill=TEXT_COLOR, font=font_small)
+        draw.text((pad + 95, y), wind, fill=TEXT_COLOR, font=font_small)
+
+        y += row_h
+
+    # --- Footer with model info ---
+    y = height - 40
+    draw.line([(pad, y), (width - pad, y)], fill=TEXT_COLOR, width=1)
+    y += 4
+
+    now_str = datetime.now().strftime("Updated: %H:%M")
+    draw.text((pad, y), now_str, fill=TEXT_COLOR, font=font_small)
+    y += 14
+    if model_info:
+        draw.text((pad, y), model_info, fill=TEXT_COLOR, font=font_small)
+
+    return img
