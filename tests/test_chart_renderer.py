@@ -21,13 +21,13 @@ def _make_model_data(model_name, hours=48):
 
 def test_render_meteogram_returns_pil_image():
     ecmwf = _make_model_data("ECMWF", 48)
-    metno = _make_model_data("MetNo", 48)
-    img = render_meteogram(ecmwf, metno, (800, 480))
+    icon_eu = _make_model_data("ICON-EU", 48)
+    img = render_meteogram(ecmwf, icon_eu, (800, 480))
     assert isinstance(img, Image.Image)
     assert img.size == (800, 480)
 
 
-def test_render_meteogram_without_metno():
+def test_render_meteogram_without_icon_eu():
     ecmwf = _make_model_data("ECMWF", 48)
     img = render_meteogram(ecmwf, None, (800, 480))
     assert isinstance(img, Image.Image)
@@ -36,6 +36,6 @@ def test_render_meteogram_without_metno():
 
 def test_render_meteogram_rgb_mode():
     ecmwf = _make_model_data("ECMWF", 48)
-    metno = _make_model_data("MetNo", 48)
-    img = render_meteogram(ecmwf, metno, (800, 480))
+    icon_eu = _make_model_data("ICON-EU", 48)
+    img = render_meteogram(ecmwf, icon_eu, (800, 480))
     assert img.mode == "RGB"

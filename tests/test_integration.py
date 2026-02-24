@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from PIL import Image
-from plugins.meteogram.data_fetcher import fetch_ecmwf, fetch_metno
+from plugins.meteogram.data_fetcher import fetch_ecmwf, fetch_icon_eu
 from plugins.meteogram.chart_renderer import render_full_meteogram
 
 
@@ -20,18 +20,18 @@ SAMPLE_ECMWF = {
     },
 }
 
-METNO_HOURS = 48
-SAMPLE_METNO = {
+ICON_EU_HOURS = 48
+SAMPLE_ICON_EU = {
     "generationtime_ms": 1.0,
     "hourly": {
-        "time": [f"2026-02-{24 + h // 24}T{h % 24:02d}:00" for h in range(METNO_HOURS)],
-        "temperature_2m": [3.0 + 9 * (h % 24) / 24 for h in range(METNO_HOURS)],
-        "precipitation": [0.3 if h % 6 == 0 else 0.0 for h in range(METNO_HOURS)],
-        "wind_speed_10m": [3.5 + 1.5 * (h % 12) / 12 for h in range(METNO_HOURS)],
-        "wind_gusts_10m": [7.0 + 2.5 * (h % 12) / 12 for h in range(METNO_HOURS)],
-        "pressure_msl": [1014.0 + 4 * (h % 24 - 12) / 12 for h in range(METNO_HOURS)],
-        "cloud_cover": [25 + 35 * (h % 24) / 24 for h in range(METNO_HOURS)],
-        "weather_code": [2 if h % 6 != 0 else 80 for h in range(METNO_HOURS)],
+        "time": [f"2026-02-{24 + h // 24}T{h % 24:02d}:00" for h in range(ICON_EU_HOURS)],
+        "temperature_2m": [3.0 + 9 * (h % 24) / 24 for h in range(ICON_EU_HOURS)],
+        "precipitation": [0.3 if h % 6 == 0 else 0.0 for h in range(ICON_EU_HOURS)],
+        "wind_speed_10m": [3.5 + 1.5 * (h % 12) / 12 for h in range(ICON_EU_HOURS)],
+        "wind_gusts_10m": [7.0 + 2.5 * (h % 12) / 12 for h in range(ICON_EU_HOURS)],
+        "pressure_msl": [1014.0 + 4 * (h % 24 - 12) / 12 for h in range(ICON_EU_HOURS)],
+        "cloud_cover": [25 + 35 * (h % 24) / 24 for h in range(ICON_EU_HOURS)],
+        "weather_code": [2 if h % 6 != 0 else 80 for h in range(ICON_EU_HOURS)],
     },
 }
 
@@ -49,16 +49,16 @@ def test_full_pipeline(mock_get):
     def side_effect(url, **kwargs):
         if "ecmwf" in url:
             return _mock_response(SAMPLE_ECMWF)
-        return _mock_response(SAMPLE_METNO)
+        return _mock_response(SAMPLE_ICON_EU)
     mock_get.side_effect = side_effect
 
     ecmwf = fetch_ecmwf()
-    metno = fetch_metno()
+    icon_eu = fetch_icon_eu()
 
     assert ecmwf is not None
-    assert metno is not None
+    assert icon_eu is not None
 
-    img = render_full_meteogram(ecmwf, metno, (800, 480))
+    img = render_full_meteogram(ecmwf, icon_eu, (800, 480))
     assert img.size == (800, 480)
     assert img.mode == "RGB"
 

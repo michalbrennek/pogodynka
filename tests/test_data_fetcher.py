@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from plugins.meteogram.data_fetcher import fetch_ecmwf, fetch_metno, ModelData
+from plugins.meteogram.data_fetcher import fetch_ecmwf, fetch_icon_eu, ModelData
 
 
 def _make_response(json_data, status=200):
@@ -37,11 +37,11 @@ def test_fetch_ecmwf_returns_model_data(mock_get):
 
 
 @patch("plugins.meteogram.data_fetcher.requests.get")
-def test_fetch_metno_returns_model_data(mock_get):
+def test_fetch_icon_eu_returns_model_data(mock_get):
     mock_get.return_value = _make_response(SAMPLE_RESPONSE)
-    result = fetch_metno(52.2858, 20.9329)
+    result = fetch_icon_eu(52.2858, 20.9329)
     assert isinstance(result, ModelData)
-    assert result.model_name == "MetNo"
+    assert result.model_name == "ICON-EU"
 
 
 @patch("plugins.meteogram.data_fetcher.requests.get")

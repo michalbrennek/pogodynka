@@ -12,15 +12,15 @@ def cache_file(tmp_path):
 def test_fresh_cache_has_no_data(cache_file):
     cache = MeteogramCache(cache_file)
     assert cache.has_new_data("ECMWF", 1.5) is True
-    assert cache.has_new_data("MetNo", 2.0) is True
+    assert cache.has_new_data("ICON-EU", 2.0) is True
 
 
 def test_cache_stores_and_detects_same_data(cache_file):
     cache = MeteogramCache(cache_file)
     cache.update("ECMWF", 1.5)
-    cache.update("MetNo", 2.0)
+    cache.update("ICON-EU", 2.0)
     assert cache.has_new_data("ECMWF", 1.5) is False
-    assert cache.has_new_data("MetNo", 2.0) is False
+    assert cache.has_new_data("ICON-EU", 2.0) is False
 
 
 def test_cache_detects_new_data(cache_file):
