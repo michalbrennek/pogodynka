@@ -339,32 +339,48 @@ def render_right_panel(
 
 
 def _render_synoptic_panel(chart_data: bytes, width: int, height: int) -> Image.Image:
-    """Render UKMO surface pressure analysis chart fitted to the left panel.
+    """Render UKMO synoptic chart cropped to Poland region, filling the panel.
 
-    Crops the top 2/3 of the original chart (the map area) and scales it
-    up to fill the panel.  The Crown Copyright line is extracted from the
-    bottom of the original image and placed at the bottom-right.
+    Crops a region centered on Poland (approx 52N 20E) from the UKMO chart,
+    matching the panel aspect ratio, then scales to fill the available space.
+    Crown Copyright is extracted from the original and placed bottom-right.
     """
     src = Image.open(BytesIO(chart_data)).convert("RGB")
     orig_w, orig_h = src.size
 
-    # --- extract Crown Copyright strip from the bottom ~5% of the original ---
-    copy_strip_h = max(20, orig_h // 20)
-    copyright_strip = src.crop((0, orig_h - copy_strip_h, orig_w, orig_h))
+    # --- extract Crown Copyright strip from bottom-right of original ---
+    cr_w = int(orig_w * 0.25)
+    cr_h = max(20, orig_h // 16)
+    copyright_strip = src.crop((orig_w - cr_w, orig_h - cr_h, orig_w, orig_h))
 
-    # --- crop top 2/3 of the chart (the actual map) ---
-    map_h = int(orig_h * 2 / 3)
-    map_crop = src.crop((0, 0, orig_w, map_h))
+    # --- crop region centered on Poland, matching panel aspect ratio ---
+    # Poland is approx at 65% x, 35% y of the UKMO chart
+    center_x = int(orig_w * 0.65)
+    center_y = int(orig_h * 0.35)
 
-    # --- scale the map crop to fill the panel ---
-    map_crop.thumbnail((width, height), Image.LANCZOS)
+    panel_ratio = width / height  # target aspect ratio
+    # Use ~55% of chart width for good surrounding context
+    crop_w = int(orig_w * 0.55)
+    crop_h = int(crop_w / panel_ratio)
+
+    # Clamp to image bounds
+    left = max(0, center_x - crop_w // 2)
+    top = max(0, center_y - crop_h // 2)
+    right = min(orig_w, left + crop_w)
+    bottom = min(orig_h, top + crop_h)
+    # Re-adjust if clamped
+    left = max(0, right - crop_w)
+    top = max(0, bottom - crop_h)
+
+    map_crop = src.crop((left, top, right, bottom))
+
+    # --- scale to fill panel exactly ---
+    map_scaled = map_crop.resize((width, height), Image.LANCZOS)
 
     panel = Image.new("RGB", (width, height), (255, 255, 255))
-    x_off = (width - map_crop.width) // 2
-    y_off = (height - map_crop.height) // 2
-    panel.paste(map_crop, (x_off, y_off))
+    panel.paste(map_scaled, (0, 0))
 
-    # --- paste copyright strip at bottom-right ---
+    # --- paste copyright at bottom-right ---
     strip_target_w = min(width // 3, copyright_strip.width)
     strip_scale = strip_target_w / copyright_strip.width
     strip_target_h = max(12, int(copyright_strip.height * strip_scale))
