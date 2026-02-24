@@ -1,4 +1,14 @@
 <div class="form-group">
+    <label>Latitude</label>
+    <input type="text" name="latitude" class="form-control" placeholder="52.2858" value="52.2858">
+</div>
+
+<div class="form-group">
+    <label>Longitude</label>
+    <input type="text" name="longitude" class="form-control" placeholder="20.9329" value="20.9329">
+</div>
+
+<div class="form-group">
     <label>Temperature Units</label>
     <select name="temp_units" class="form-control">
         <option value="celsius">Celsius (°C)</option>
@@ -41,6 +51,8 @@
 <script>
 if (typeof loadPluginSettings !== 'undefined' && loadPluginSettings) {
     var s = pluginSettings;
+    if (s.latitude) document.querySelector('[name="latitude"]').value = s.latitude;
+    if (s.longitude) document.querySelector('[name="longitude"]').value = s.longitude;
     if (s.temp_units) document.querySelector('[name="temp_units"]').value = s.temp_units;
     if (s.wind_units) document.querySelector('[name="wind_units"]').value = s.wind_units;
     if (s.forecast_days) document.querySelector('[name="forecast_days"]').value = s.forecast_days;

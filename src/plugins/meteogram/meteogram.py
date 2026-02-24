@@ -1,7 +1,7 @@
 import logging
 import os
 from plugins.base_plugin.base_plugin import BasePlugin
-from plugins.meteogram.data_fetcher import fetch_ecmwf, fetch_metno
+from plugins.meteogram.data_fetcher import fetch_ecmwf, fetch_metno, LAT, LON
 from plugins.meteogram.chart_renderer import render_full_meteogram
 from plugins.meteogram.cache import MeteogramCache
 from PIL import Image
@@ -20,9 +20,13 @@ class Meteogram(BasePlugin):
         if device_config.get_config("orientation") == "vertical":
             dimensions = dimensions[::-1]
 
+        # Get location from settings, fall back to defaults
+        lat = float(settings.get("latitude", LAT))
+        lon = float(settings.get("longitude", LON))
+
         # Fetch both models
-        ecmwf = fetch_ecmwf()
-        metno = fetch_metno()
+        ecmwf = fetch_ecmwf(lat, lon)
+        metno = fetch_metno(lat, lon)
 
         if ecmwf is None:
             logger.error("ECMWF fetch failed, cannot render meteogram")
