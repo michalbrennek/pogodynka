@@ -203,7 +203,7 @@ def render_right_panel(
 
         draw.text((pad, y), f"{icon} {temp}", fill=TEXT_COLOR, font=font_large)
         y += 30
-        draw.text((pad, y), desc, fill=ACCENT_COLOR, font=font_medium)
+        draw.text((pad, y), desc, fill=ICON_EU_COLOR, font=font_medium)
         y += 22
 
     # Separator line
