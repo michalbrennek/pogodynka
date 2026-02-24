@@ -12,7 +12,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from plugins.meteogram.data_fetcher import ModelData, AstroData
-from plugins.meteogram.weather_icons import wmo_to_icon, wmo_to_description, wind_direction_arrow
+from plugins.meteogram.weather_icons import wmo_to_icon, wmo_to_color, wmo_to_description, wind_direction_arrow
 
 logger = logging.getLogger(__name__)
 
@@ -75,11 +75,11 @@ def render_meteogram(
     ax_legend = fig.add_subplot(gs[0])
     ax_legend.axis("off")
 
-    # Updated timestamp on the left
+    # Updated timestamp on the left (two lines)
     now_str = datetime.now().strftime("%H:%M")
-    ax_legend.text(0.0, 0.5, f"Updated: {now_str}",
+    ax_legend.text(0.0, 0.5, f"Updated\n{now_str}",
                    transform=ax_legend.transAxes, fontsize=FONT_SIZE_LABEL,
-                   va="center", ha="left")
+                   va="center", ha="left", linespacing=1.2)
 
     legend_items = [
         plt.Line2D([0], [0], color=ECMWF_COLOR, linewidth=2, label="ECMWF"),
@@ -162,7 +162,7 @@ def render_meteogram(
     ax_wind.set_ylim(bottom=0)
     ax_wind.grid(True, linestyle=":", linewidth=0.3, color=GRID_COLOR)
 
-    # Wind direction arrows pinned to top of chart (every 3h, ECMWF data)
+    # Wind direction arrows above the wind chart (every 3h, ECMWF data)
     if ecmwf.wind_direction:
         step = 3
         for i in range(0, len(ecmwf_times), step):
@@ -170,9 +170,10 @@ def render_meteogram(
                 arrow = wind_direction_arrow(ecmwf.wind_direction[i])
                 ax_wind.annotate(arrow, (ecmwf_times[i], 1.0),
                                  xycoords=("data", "axes fraction"),
-                                 textcoords="offset points", xytext=(0, -2),
-                                 fontsize=FONT_SIZE_LABEL, color=ECMWF_COLOR,
-                                 ha="center", va="top")
+                                 textcoords="offset points", xytext=(0, 2),
+                                 fontsize=FONT_SIZE_LABEL, color=TEXT_COLOR,
+                                 ha="center", va="bottom",
+                                 annotation_clip=False)
 
     # --- Pressure + Cloud Cover ---
     ax_press.plot(ecmwf_times, ecmwf.pressure, color=ECMWF_COLOR, linewidth=1.2)
@@ -193,7 +194,7 @@ def render_meteogram(
         plt.setp(ax.get_xticklabels(), visible=False)
 
     # X-axis formatting on bottom subplot
-    ax_press.xaxis.set_major_formatter(mdates.DateFormatter("%d/%m\n%Hz"))
+    ax_press.xaxis.set_major_formatter(mdates.DateFormatter("%d/%m\n%H:%M"))
     ax_press.xaxis.set_major_locator(mdates.HourLocator(interval=12))
     plt.setp(ax_press.xaxis.get_majorticklabels(), rotation=0, ha="center")
 
@@ -225,8 +226,8 @@ def render_right_panel(
     try:
         font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
         font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 16)
-        font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
-        font_icon = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 22)
+        font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 15)
+        font_icon = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 23)
     except (IOError, OSError):
         font_large = ImageFont.load_default()
         font_medium = ImageFont.load_default()
@@ -239,10 +240,12 @@ def render_right_panel(
     # --- Current conditions header ---
     if data.times and data.weather_code and data.temperature:
         icon = wmo_to_icon(data.weather_code[0])
+        icon_color = wmo_to_color(data.weather_code[0])
         desc = wmo_to_description(data.weather_code[0])
         temp = f"{data.temperature[0]:.0f}°C"
 
-        draw.text((pad, y), f"{icon} {temp}", fill=TEXT_COLOR, font=font_large)
+        draw.text((pad, y), icon, fill=icon_color, font=font_large)
+        draw.text((pad + 28, y), temp, fill=TEXT_COLOR, font=font_large)
         y += 30
         draw.text((pad, y), desc, fill=ICON_EU_COLOR, font=font_medium)
         y += 22
@@ -276,8 +279,17 @@ def render_right_panel(
     draw.line([(pad, y), (width - pad, y)], fill=TEXT_COLOR, width=1)
     y += 6
 
+    # --- Header row ---
+    draw.text((pad, y), "Time", fill=TEXT_COLOR, font=font_small)
+    draw.text((pad + 48, y), "Wx", fill=TEXT_COLOR, font=font_small)
+    draw.text((pad + 86, y), "\u00b0C/feel", fill=TEXT_COLOR, font=font_small)
+    draw.text((pad + 148, y), "m/s", fill=TEXT_COLOR, font=font_small)
+    draw.text((pad + 192, y), "mm", fill=ECMWF_COLOR, font=font_small)
+    draw.text((pad + 232, y), "%", fill=ICON_EU_COLOR, font=font_small)
+    y += 18
+    draw.line([(pad, y - 2), (width - pad, y - 2)], fill=TEXT_COLOR, width=1)
+
     # --- Hourly rows (next 24h) ---
-    # Columns: HH:MM  icon  temp  dir+wind  precip  prob
     max_rows = min(24, len(data.times))
     row_h = min(20, (height - y - 10) // max_rows) if max_rows > 0 else 20
 
@@ -288,27 +300,59 @@ def render_right_panel(
         time_str = data.times[i]
         hour = time_str.split("T")[1][:5] if "T" in time_str else time_str
         icon = wmo_to_icon(data.weather_code[i]) if i < len(data.weather_code) else ""
-        temp = f"{data.temperature[i]:.0f}\u00b0" if i < len(data.temperature) else ""
+        icon_color = wmo_to_color(data.weather_code[i]) if i < len(data.weather_code) else TEXT_COLOR
+
+        # Temperature: actual/feels-like
+        temp = ""
+        if i < len(data.temperature):
+            t = data.temperature[i]
+            if i < len(data.apparent_temperature):
+                at = data.apparent_temperature[i]
+                is_nan = isinstance(at, float) and at != at
+                if not is_nan:
+                    temp = f"{t:.0f}/{at:.0f}"
+                else:
+                    temp = f"{t:.0f}"
+            else:
+                temp = f"{t:.0f}"
+
         w_dir = wind_direction_arrow(data.wind_direction[i]) if i < len(data.wind_direction) else ""
         wind = f"{data.wind_speed[i]:.0f}" if i < len(data.wind_speed) else ""
         mm = ""
         prob = ""
         if i < len(data.precipitation) and data.precipitation[i] > 0:
             mm = f"{data.precipitation[i]:.1f}"
-        if i < len(data.precip_probability) and data.precip_probability[i] > 0:
-            prob = f"{data.precip_probability[i]:.0f}%"
+        if i < len(data.precip_probability):
+            prob = f"{data.precip_probability[i]:.0f}"
 
         draw.text((pad, y), hour, fill=TEXT_COLOR, font=font_small)
-        draw.text((pad + 42, y - 2), icon, fill=TEXT_COLOR, font=font_icon)
-        draw.text((pad + 64, y), temp, fill=TEXT_COLOR, font=font_small)
-        draw.text((pad + 96, y), w_dir, fill=TEXT_COLOR, font=font_small)
-        draw.text((pad + 110, y), wind, fill=TEXT_COLOR, font=font_small)
-        draw.text((pad + 140, y), mm, fill=ECMWF_COLOR, font=font_small)
-        draw.text((pad + 175, y), prob, fill=ICON_EU_COLOR, font=font_small)
+        draw.text((pad + 48, y - 2), icon, fill=icon_color, font=font_icon)
+        draw.text((pad + 86, y), temp, fill=TEXT_COLOR, font=font_small)
+        draw.text((pad + 138, y), w_dir, fill=TEXT_COLOR, font=font_small)
+        draw.text((pad + 154, y), wind, fill=TEXT_COLOR, font=font_small)
+        draw.text((pad + 192, y), mm, fill=ECMWF_COLOR, font=font_small)
+        draw.text((pad + 232, y), prob, fill=ICON_EU_COLOR, font=font_small)
 
         y += row_h
 
     return img
+
+
+def _render_synoptic_panel(chart_data: bytes, width: int, height: int) -> Image.Image:
+    """Render UKMO surface pressure analysis chart fitted to the left panel.
+
+    The chart is already black & white — just resize to fit.
+    """
+    src = Image.open(BytesIO(chart_data)).convert("RGB")
+    # Fit to panel keeping aspect ratio
+    src.thumbnail((width, height), Image.LANCZOS)
+
+    panel = Image.new("RGB", (width, height), (255, 255, 255))
+    x_off = (width - src.width) // 2
+    y_off = (height - src.height) // 2
+    panel.paste(src, (x_off, y_off))
+
+    return panel
 
 
 def render_full_meteogram(
@@ -316,20 +360,39 @@ def render_full_meteogram(
     icon_eu: Optional[ModelData],
     dimensions: tuple,
     astro: Optional[AstroData] = None,
+    best_match: Optional[ModelData] = None,
+    synoptic_chart: Optional[bytes] = None,
+    mode: str = "auto",
 ) -> Image.Image:
-    """Compose the full 800x480 image: left meteogram + right sidebar."""
+    """Compose the full 800x480 image: left panel + right sidebar.
+
+    mode='auto': even hours = synoptic chart, odd hours = meteogram
+    mode='synoptic': always synoptic chart
+    mode='meteogram': always meteogram
+    """
     total_w, total_h = dimensions
     left_w = int(total_w * 0.65)
     right_w = total_w - left_w
 
-    # Render left panel (meteogram charts)
-    left_img = render_meteogram(ecmwf, icon_eu, dimensions)
+    # Decide what to show on the left
+    show_synoptic = False
+    if mode == "synoptic":
+        show_synoptic = True
+    elif mode == "meteogram":
+        show_synoptic = False
+    else:  # auto
+        show_synoptic = datetime.now().hour % 2 == 0
 
-    # Render right panel (24h detail) using the best short-range data
-    sidebar_data = icon_eu if icon_eu else ecmwf
-    model_info = "ECMWF"
-    if icon_eu:
-        model_info = "ECMWF + ICON-EU"
+    if show_synoptic and synoptic_chart:
+        left_img = Image.new("RGB", dimensions, BG_COLOR)
+        synoptic_panel = _render_synoptic_panel(synoptic_chart, left_w, total_h)
+        left_img.paste(synoptic_panel, (0, 0))
+    else:
+        left_img = render_meteogram(ecmwf, icon_eu, dimensions)
+
+    # Render right panel — best_match has real precip probability
+    sidebar_data = best_match if best_match else (icon_eu if icon_eu else ecmwf)
+    model_info = "Best Match"
     right_img = render_right_panel(sidebar_data, right_w, total_h, model_info, astro)
 
     # Composite

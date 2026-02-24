@@ -1,0 +1,13 @@
+[Unit]
+Description=Pogodynka button daemon for Inky Impression
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/inkypi/src/plugins/meteogram/button_daemon.py
+Restart=always
+RestartSec=5
+User=root
+
+[Install]
+WantedBy=multi-user.target

@@ -1,12 +1,33 @@
+import json
 import logging
 import os
 from plugins.base_plugin.base_plugin import BasePlugin
-from plugins.meteogram.data_fetcher import fetch_ecmwf, fetch_icon_eu, fetch_astro, LAT, LON
+from plugins.meteogram.data_fetcher import fetch_ecmwf, fetch_icon_eu, fetch_best_match, fetch_astro, fetch_synoptic_chart, LAT, LON
 from plugins.meteogram.chart_renderer import render_full_meteogram
 from plugins.meteogram.cache import MeteogramCache
 from PIL import Image
 
 logger = logging.getLogger(__name__)
+
+BUTTON_STATE_FILE = "/usr/local/inkypi/src/plugins/meteogram/button_state.json"
+REFRESH_TRIGGER = "/usr/local/inkypi/src/plugins/meteogram/refresh_trigger"
+
+
+def _read_button_mode():
+    """Read display mode set by button daemon. Returns 'auto', 'synoptic', or 'meteogram'."""
+    try:
+        with open(BUTTON_STATE_FILE) as f:
+            return json.load(f).get("mode", "auto")
+    except (FileNotFoundError, json.JSONDecodeError):
+        return "auto"
+
+
+def _check_refresh_trigger():
+    """Check if button daemon requested a forced refresh. Consumes the trigger."""
+    if os.path.exists(REFRESH_TRIGGER):
+        os.remove(REFRESH_TRIGGER)
+        return True
+    return False
 
 
 class Meteogram(BasePlugin):
@@ -24,22 +45,27 @@ class Meteogram(BasePlugin):
         lat = float(settings.get("latitude", LAT))
         lon = float(settings.get("longitude", LON))
 
-        # Fetch both models
+        # Check button state
+        mode = _read_button_mode()
+        forced_refresh = _check_refresh_trigger()
+
+        # Fetch models: ECMWF + ICON-EU for charts, best-match for sidebar
         ecmwf = fetch_ecmwf(lat, lon)
         icon_eu = fetch_icon_eu(lat, lon)
+        best_match = fetch_best_match(lat, lon)
 
         if ecmwf is None:
             logger.error("ECMWF fetch failed, cannot render meteogram")
             return self._fallback_image(dimensions)
 
-        # Check cache — skip render if data unchanged
+        # Check cache — skip render if data unchanged (unless button forced refresh)
         ecmwf_gen = ecmwf.generation_time or 0
         icon_eu_gen = icon_eu.generation_time if icon_eu else 0
 
         ecmwf_new = self.cache.has_new_data("ECMWF", ecmwf_gen)
         icon_eu_new = self.cache.has_new_data("ICON-EU", icon_eu_gen)
 
-        if not ecmwf_new and not icon_eu_new:
+        if not ecmwf_new and not icon_eu_new and not forced_refresh:
             cached_path = self.cache.get_last_image()
             if cached_path and os.path.exists(cached_path):
                 logger.info("No new model data, returning cached image")
@@ -48,8 +74,13 @@ class Meteogram(BasePlugin):
         # Fetch astronomical data (sunrise/sunset/moon)
         astro = fetch_astro(lat, lon)
 
+        # Fetch synoptic chart
+        synoptic = fetch_synoptic_chart()
+
         # Render fresh meteogram
-        img = render_full_meteogram(ecmwf, icon_eu, dimensions, astro)
+        img = render_full_meteogram(
+            ecmwf, icon_eu, dimensions, astro, best_match, synoptic, mode,
+        )
 
         # Update cache
         self.cache.update("ECMWF", ecmwf_gen)

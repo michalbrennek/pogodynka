@@ -17,7 +17,8 @@ ECMWF_URL = (
     "https://api.open-meteo.com/v1/ecmwf"
     "?latitude={lat}&longitude={lon}"
     "&hourly=temperature_2m,apparent_temperature,precipitation,"
-    "relative_humidity_2m,wind_speed_10m,wind_gusts_10m,"
+    "precipitation_probability,relative_humidity_2m,"
+    "wind_speed_10m,wind_gusts_10m,"
     "wind_direction_10m,pressure_msl,cloud_cover,weather_code"
     "&timezone={tz}"
 )
@@ -31,6 +32,16 @@ ICON_EU_URL = (
     "pressure_msl,cloud_cover,weather_code"
     "&timezone={tz}"
     "&models=icon_eu"
+)
+
+BEST_MATCH_URL = (
+    "https://api.open-meteo.com/v1/forecast"
+    "?latitude={lat}&longitude={lon}"
+    "&hourly=temperature_2m,apparent_temperature,precipitation,"
+    "precipitation_probability,relative_humidity_2m,"
+    "wind_speed_10m,wind_gusts_10m,wind_direction_10m,"
+    "pressure_msl,cloud_cover,weather_code"
+    "&timezone={tz}"
 )
 
 
@@ -137,6 +148,29 @@ def fetch_ecmwf(lat: float = LAT, lon: float = LON) -> Optional[ModelData]:
 
 def fetch_icon_eu(lat: float = LAT, lon: float = LON) -> Optional[ModelData]:
     return _fetch_model(ICON_EU_URL, lat, lon, "ICON-EU")
+
+
+def fetch_best_match(lat: float = LAT, lon: float = LON) -> Optional[ModelData]:
+    return _fetch_model(BEST_MATCH_URL, lat, lon, "Best Match")
+
+
+# --- Synoptic chart ---
+
+SYNOPTIC_URL = "https://www.weathercharts.net/ukmo_mslp_analysis/ppva.gif"
+
+
+def fetch_synoptic_chart() -> Optional[bytes]:
+    """Download UKMO surface pressure analysis chart from weathercharts.org.
+
+    Black & white fax-style chart, ~80KB, updated every 6 hours.
+    """
+    try:
+        resp = requests.get(SYNOPTIC_URL, timeout=30)
+        resp.raise_for_status()
+        return resp.content
+    except Exception as e:
+        logger.error(f"Failed to fetch synoptic chart: {e}")
+        return None
 
 
 # --- Astronomical data ---

@@ -5,10 +5,10 @@ Open-Meteo uses a subset of these codes.
 """
 
 _WMO_ICONS = {
-    0: "\u2600",      # Clear sky
-    1: "\u26C5",      # Mainly clear
-    2: "\u26C5",      # Partly cloudy
-    3: "\u2601",      # Overcast
+    0: "\u2600",      # Clear sky ☀
+    1: "\u2601",      # Mainly clear (cloud - safe glyph)
+    2: "\u2601",      # Partly cloudy (cloud - safe glyph)
+    3: "\u2601",      # Overcast ☁
     45: "\u2601",     # Fog
     48: "\u2601",     # Depositing rime fog
     51: "\u2602",     # Light drizzle
@@ -64,9 +64,43 @@ _WMO_DESCRIPTIONS = {
 
 _DEFAULT_ICON = "\u2601"
 
+# Icon colors for 7-color e-ink palette
+_WMO_COLORS = {
+    0: "#FF8C00",     # Clear — orange
+    1: "#000000",     # Mainly clear — black cloud
+    2: "#000000",     # Partly cloudy — black cloud
+    3: "#000000",     # Overcast — black
+    45: "#000000",    # Fog
+    48: "#000000",    # Rime fog
+    51: "#0000FF",    # Drizzle — blue
+    53: "#0000FF",
+    55: "#0000FF",
+    61: "#0000FF",    # Rain — blue
+    63: "#0000FF",
+    65: "#0000FF",
+    66: "#0000FF",    # Freezing rain
+    67: "#0000FF",
+    71: "#0000FF",    # Snow — blue
+    73: "#0000FF",
+    75: "#0000FF",
+    77: "#0000FF",
+    80: "#0000FF",    # Showers — blue
+    81: "#0000FF",
+    82: "#0000FF",
+    85: "#0000FF",    # Snow showers
+    86: "#0000FF",
+    95: "#FF0000",    # Thunderstorm — red
+    96: "#FF0000",
+    99: "#FF0000",
+}
+
 
 def wmo_to_icon(code: int) -> str:
     return _WMO_ICONS.get(code, _DEFAULT_ICON)
+
+
+def wmo_to_color(code: int) -> str:
+    return _WMO_COLORS.get(code, "#000000")
 
 
 def wmo_to_description(code: int) -> str:

@@ -1,26 +1,45 @@
 # Pogodynka - Dual-Model Weather Meteogram for InkyPi
 
-A weather meteogram plugin for [InkyPi](https://github.com/fatihak/InkyPi) that overlays ECMWF and DWD ICON-EU model forecasts on a Pimoroni Inky Impression 7.3" e-ink display.
+A weather meteogram plugin for [InkyPi](https://github.com/fatihak/InkyPi) that overlays ECMWF and DWD ICON-EU model forecasts on a Pimoroni Inky Impression 7.3" e-ink display, with synoptic chart switching via physical buttons.
 
 ## Features
 
 - **Dual-model overlay** — ECMWF (long-range, 10 days) and DWD ICON-EU (7km European resolution) on the same axes
-- **Meteorologist view** — 4 stacked panels: temperature, precipitation, wind, pressure + cloud cover
-- **24h sidebar** — hourly detail with weather icons for quick reference
+- **Meteorologist view** — 4 stacked panels: temperature + feels-like, precipitation + humidity, wind + direction arrows, pressure + cloud cover
+- **Synoptic chart** — UKMO surface pressure analysis from [weathercharts.org](https://www.weathercharts.org/), alternating with meteogram on even/odd hours
+- **Physical buttons** — Inky Impression buttons switch between synoptic chart (A), meteogram (B), and force refresh (C)
+- **24h sidebar** — hourly detail with colored weather icons, temperature/feels-like, wind direction + speed, precipitation mm and probability %
+- **Astronomical data** — moon phase, sunrise/sunset, moonrise/moonset
 - **Smart caching** — only refreshes the e-ink display when model data actually updates
 - **7-color e-ink** — designed for the Inky Impression's 7-color palette
 
 ## Layout
 
 ```
-+--- 3/4 meteogram --------+--- 1/4 detail ---+
-| Temp (ECMWF + ICON-EU)   | Now: 24C Sunny   |
-| Precip (both models)     | 09: 18C 2m/s     |
-| Wind (speed + gusts)     | 10: 20C 3m/s     |
-| Pressure + Cloud cover   | ...              |
-|  0h  12h  48h  5d  10d   | Updated: 06:15   |
-+---------------------------+------------------+
++--- 65% left panel -------+--- 35% sidebar ----------+
+| Meteogram (odd hours)    | Now: 2/0°C Overcast      |
+|  or                      | Moon: ◐ First Quarter     |
+| Synoptic chart (even)    | SR 06:45  SS 17:22       |
+|                          | Time Wx °C/feel m/s mm % |
+| Temp + feels-like        | 09:00 ☁  2/0   ↓ 5 0.1 79|
+| Precip + humidity        | 10:00 ☂  3/1   ← 4 0.2 45|
+| Wind + direction arrows  | ...                      |
+| Pressure + cloud cover   |                          |
++---------------------------+--------------------------+
 ```
+
+## Physical Buttons
+
+The Inky Impression 7.3" has 4 buttons (GPIO 5, 6, 16, 24):
+
+| Button | Action |
+|--------|--------|
+| A (top) | Show synoptic chart |
+| B | Show meteogram |
+| C | Force refresh |
+| D | Reserved |
+
+A separate `pogodynka-buttons` systemd service listens for button presses and triggers InkyPi display updates via its web API.
 
 ## Hardware
 
@@ -29,8 +48,11 @@ A weather meteogram plugin for [InkyPi](https://github.com/fatihak/InkyPi) that 
 
 ## Data Sources
 
-- [Open-Meteo ECMWF API](https://open-meteo.com/en/docs/ecmwf-api) — free, no API key required
-- [Open-Meteo DWD ICON API](https://open-meteo.com/en/docs/dwd-api) — free, no API key required
+- [Open-Meteo ECMWF API](https://open-meteo.com/en/docs/ecmwf-api) — temperature, wind, pressure, cloud cover (free, no API key)
+- [Open-Meteo DWD ICON-EU API](https://open-meteo.com/en/docs/dwd-api) — European regional model overlay (free, no API key)
+- [Open-Meteo Best Match API](https://open-meteo.com/en/docs) — sidebar data with precipitation probability (free, no API key)
+- [MET Norway Sunrise API](https://api.met.no/weatherapi/sunrise/3.0/) — moonrise/moonset data
+- [WeatherCharts.org](https://www.weathercharts.org/) — UKMO surface pressure analysis (B&W fax chart)
 
 ## Built on
 
