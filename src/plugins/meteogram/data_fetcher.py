@@ -164,8 +164,9 @@ def fetch_synoptic_chart() -> Optional[bytes]:
 
     Black & white fax-style chart, ~80KB, updated every 6 hours.
     """
+    headers = {"User-Agent": "pogodynka/1.0"}
     try:
-        resp = requests.get(SYNOPTIC_URL, timeout=30)
+        resp = requests.get(SYNOPTIC_URL, timeout=30, headers=headers)
         resp.raise_for_status()
         return resp.content
     except Exception as e:
