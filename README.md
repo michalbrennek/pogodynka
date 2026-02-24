@@ -1,10 +1,10 @@
 # Pogodynka - Dual-Model Weather Meteogram for InkyPi
 
-A weather meteogram plugin for [InkyPi](https://github.com/fatihak/InkyPi) that overlays ECMWF and Norwegian (MET Nordic) model forecasts on a Pimoroni Inky Impression 7.3" e-ink display.
+A weather meteogram plugin for [InkyPi](https://github.com/fatihak/InkyPi) that overlays ECMWF and DWD ICON-EU model forecasts on a Pimoroni Inky Impression 7.3" e-ink display.
 
 ## Features
 
-- **Dual-model overlay** — ECMWF (long-range, 10 days) and Norwegian MET Nordic (high-res, ~2.5 days) on the same axes
+- **Dual-model overlay** — ECMWF (long-range, 10 days) and DWD ICON-EU (7km European resolution) on the same axes
 - **Meteorologist view** — 4 stacked panels: temperature, precipitation, wind, pressure + cloud cover
 - **24h sidebar** — hourly detail with weather icons for quick reference
 - **Smart caching** — only refreshes the e-ink display when model data actually updates
@@ -14,7 +14,7 @@ A weather meteogram plugin for [InkyPi](https://github.com/fatihak/InkyPi) that 
 
 ```
 +--- 3/4 meteogram --------+--- 1/4 detail ---+
-| Temp (ECMWF + MetNo)     | Now: 24C Sunny   |
+| Temp (ECMWF + ICON-EU)   | Now: 24C Sunny   |
 | Precip (both models)     | 09: 18C 2m/s     |
 | Wind (speed + gusts)     | 10: 20C 3m/s     |
 | Pressure + Cloud cover   | ...              |
@@ -30,7 +30,7 @@ A weather meteogram plugin for [InkyPi](https://github.com/fatihak/InkyPi) that 
 ## Data Sources
 
 - [Open-Meteo ECMWF API](https://open-meteo.com/en/docs/ecmwf-api) — free, no API key required
-- [Open-Meteo MET Norway API](https://open-meteo.com/en/docs/metno-api) — free, no API key required
+- [Open-Meteo DWD ICON API](https://open-meteo.com/en/docs/dwd-api) — free, no API key required
 
 ## Built on
 

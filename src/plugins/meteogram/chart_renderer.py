@@ -185,15 +185,12 @@ def render_right_panel(
         font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
         font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 16)
         font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
-        font_icon = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 18)
+        font_icon = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 22)
     except (IOError, OSError):
         font_large = ImageFont.load_default()
         font_medium = ImageFont.load_default()
         font_small = ImageFont.load_default()
         font_icon = ImageFont.load_default()
-
-    # Draw left border separator
-    draw.line([(0, 0), (0, height)], fill=TEXT_COLOR, width=2)
 
     y = 8
     pad = 8
@@ -228,9 +225,9 @@ def render_right_panel(
         wind = f"{data.wind_speed[i]:.0f}m/s" if i < len(data.wind_speed) else ""
 
         draw.text((pad, y), hour, fill=TEXT_COLOR, font=font_small)
-        draw.text((pad + 40, y), icon, fill=TEXT_COLOR, font=font_icon)
-        draw.text((pad + 60, y), temp, fill=TEXT_COLOR, font=font_small)
-        draw.text((pad + 95, y), wind, fill=TEXT_COLOR, font=font_small)
+        draw.text((pad + 45, y - 2), icon, fill=TEXT_COLOR, font=font_icon)
+        draw.text((pad + 75, y), temp, fill=TEXT_COLOR, font=font_small)
+        draw.text((pad + 115, y), wind, fill=TEXT_COLOR, font=font_small)
 
         y += row_h
 
