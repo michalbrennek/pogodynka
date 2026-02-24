@@ -363,8 +363,14 @@ def _render_synoptic_panel(chart_data: bytes, width: int, height: int) -> Image.
     # --- position: Poland is at ~65% x, ~35% y of original chart ---
     poland_x = int(scaled_w * 0.65)
     poland_y = int(scaled_h * 0.35)
-    paste_x = width // 2 - poland_x
-    paste_y = height // 2 - poland_y
+    paste_x = width // 2 - poland_x + int(width * 0.14)
+    paste_y = height // 2 - poland_y - int(height * 0.07)
+
+    # Clamp right edge so chart doesn't overflow into the right column
+    max_paste_x = width - scaled_w
+    if max_paste_x < paste_x < 0:
+        paste_x = max_paste_x
+    paste_x = min(paste_x, 0)
 
     # Compose onto white panel — overflow is naturally clipped
     panel_gray = Image.new("L", (width, height), 255)
