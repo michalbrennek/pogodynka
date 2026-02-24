@@ -16,7 +16,8 @@ TIMEZONE = "Europe/Warsaw"
 ECMWF_URL = (
     "https://api.open-meteo.com/v1/ecmwf"
     "?latitude={lat}&longitude={lon}"
-    "&hourly=temperature_2m,precipitation,wind_speed_10m,wind_gusts_10m,"
+    "&hourly=temperature_2m,apparent_temperature,precipitation,"
+    "relative_humidity_2m,wind_speed_10m,wind_gusts_10m,"
     "wind_direction_10m,pressure_msl,cloud_cover,weather_code"
     "&timezone={tz}"
 )
@@ -24,7 +25,8 @@ ECMWF_URL = (
 ICON_EU_URL = (
     "https://api.open-meteo.com/v1/forecast"
     "?latitude={lat}&longitude={lon}"
-    "&hourly=temperature_2m,precipitation,precipitation_probability,"
+    "&hourly=temperature_2m,apparent_temperature,precipitation,"
+    "precipitation_probability,relative_humidity_2m,"
     "wind_speed_10m,wind_gusts_10m,wind_direction_10m,"
     "pressure_msl,cloud_cover,weather_code"
     "&timezone={tz}"
@@ -37,6 +39,8 @@ class ModelData:
     model_name: str
     times: list = field(default_factory=list)
     temperature: list = field(default_factory=list)
+    apparent_temperature: list = field(default_factory=list)
+    humidity: list = field(default_factory=list)
     precipitation: list = field(default_factory=list)
     precip_probability: list = field(default_factory=list)
     wind_speed: list = field(default_factory=list)
@@ -83,6 +87,8 @@ def _fetch_model(url_template: str, lat: float, lon: float, model_name: str) -> 
 
         times = hourly.get("time", [])
         temperature = _sanitize(hourly.get("temperature_2m", []))
+        apparent_temperature = _sanitize(hourly.get("apparent_temperature", []))
+        humidity = _sanitize(hourly.get("relative_humidity_2m", []))
         precipitation = _sanitize(hourly.get("precipitation", []), 0.0)
         precip_probability = _sanitize(hourly.get("precipitation_probability", []), 0.0)
         wind_speed = _sanitize(hourly.get("wind_speed_10m", []))
@@ -93,10 +99,11 @@ def _fetch_model(url_template: str, lat: float, lon: float, model_name: str) -> 
         weather_code = _sanitize(hourly.get("weather_code", []), 0)
 
         # Trim trailing all-NaN hours so lines don't extend into empty data
-        times, temperature, wind_speed, wind_gusts, wind_direction, pressure, cloud_cover = \
+        times, temperature, apparent_temperature, wind_speed, wind_gusts, \
+            wind_direction, pressure, cloud_cover, humidity = \
             _trim_trailing_nan(
-                times, temperature, wind_speed, wind_gusts, wind_direction,
-                pressure, cloud_cover,
+                times, temperature, apparent_temperature, wind_speed,
+                wind_gusts, wind_direction, pressure, cloud_cover, humidity,
             )
         # Also trim other series to same length
         precipitation = precipitation[:len(times)]
@@ -107,6 +114,8 @@ def _fetch_model(url_template: str, lat: float, lon: float, model_name: str) -> 
             model_name=model_name,
             times=times,
             temperature=temperature,
+            apparent_temperature=apparent_temperature,
+            humidity=humidity,
             precipitation=precipitation,
             precip_probability=precip_probability,
             wind_speed=wind_speed,

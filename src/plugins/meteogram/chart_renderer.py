@@ -89,6 +89,9 @@ def render_meteogram(
             plt.Line2D([0], [0], color=ICON_EU_COLOR, linewidth=2, label="ICON-EU"),
         )
     legend_items.append(
+        plt.Line2D([0], [0], color=TEXT_COLOR, linewidth=1, linestyle="--", label="feels"),
+    )
+    legend_items.append(
         plt.Line2D([0], [0], color=ECMWF_COLOR, linewidth=1.5, linestyle="--", label="gusts"),
     )
     legend_items.append(
@@ -111,14 +114,20 @@ def render_meteogram(
     # Lock x-axis to data range — no padding
     ax_temp.set_xlim(ecmwf_times[0], ecmwf_times[-1])
 
-    # --- Temperature ---
+    # --- Temperature + Apparent Temperature ---
     ax_temp.plot(ecmwf_times, ecmwf.temperature, color=ECMWF_COLOR, linewidth=1.2)
+    if ecmwf.apparent_temperature:
+        ax_temp.plot(ecmwf_times, ecmwf.apparent_temperature, color=ECMWF_COLOR,
+                     linewidth=1.0, linestyle="--", alpha=0.7)
     if icon_eu:
         ax_temp.plot(icon_eu_times, icon_eu.temperature, color=ICON_EU_COLOR, linewidth=1.2)
+        if icon_eu.apparent_temperature:
+            ax_temp.plot(icon_eu_times, icon_eu.apparent_temperature, color=ICON_EU_COLOR,
+                         linewidth=1.0, linestyle="--", alpha=0.7)
     ax_temp.set_ylabel("Temp (\u00b0C)")
     ax_temp.grid(True, linestyle=":", linewidth=0.3, color=GRID_COLOR)
 
-    # --- Precipitation ---
+    # --- Precipitation + Humidity ---
     bar_width = 0.02  # in days
     ax_precip.bar(ecmwf_times, ecmwf.precipitation, width=bar_width,
                   color=ECMWF_COLOR, alpha=0.7)
@@ -128,6 +137,18 @@ def render_meteogram(
     ax_precip.set_ylabel("Precip (mm)")
     ax_precip.set_ylim(bottom=0)
     ax_precip.grid(True, linestyle=":", linewidth=0.3, color=GRID_COLOR)
+
+    # Humidity as line on secondary axis
+    ax_humid = ax_precip.twinx()
+    if ecmwf.humidity:
+        ax_humid.plot(ecmwf_times, ecmwf.humidity, color=ECMWF_COLOR,
+                      linewidth=0.8, linestyle=":", alpha=0.6)
+    if icon_eu and icon_eu.humidity:
+        ax_humid.plot(icon_eu_times, icon_eu.humidity, color=ICON_EU_COLOR,
+                      linewidth=0.8, linestyle=":", alpha=0.6)
+    ax_humid.set_ylabel("RH %", fontsize=FONT_SIZE_TICK)
+    ax_humid.set_ylim(0, 100)
+    ax_humid.tick_params(labelsize=FONT_SIZE_TICK)
 
     # --- Wind + direction arrows ---
     ax_wind.plot(ecmwf_times, ecmwf.wind_speed, color=ECMWF_COLOR, linewidth=1.2)
@@ -141,16 +162,17 @@ def render_meteogram(
     ax_wind.set_ylim(bottom=0)
     ax_wind.grid(True, linestyle=":", linewidth=0.3, color=GRID_COLOR)
 
-    # Wind direction arrows along the top of the wind panel (every 3h)
+    # Wind direction arrows pinned to top of chart (every 3h, ECMWF data)
     if ecmwf.wind_direction:
         step = 3
         for i in range(0, len(ecmwf_times), step):
             if i < len(ecmwf.wind_direction):
                 arrow = wind_direction_arrow(ecmwf.wind_direction[i])
-                ax_wind.annotate(arrow, (ecmwf_times[i], ecmwf.wind_gusts[i] if i < len(ecmwf.wind_gusts) else ecmwf.wind_speed[i]),
-                                 textcoords="offset points", xytext=(0, 4),
+                ax_wind.annotate(arrow, (ecmwf_times[i], 1.0),
+                                 xycoords=("data", "axes fraction"),
+                                 textcoords="offset points", xytext=(0, -2),
                                  fontsize=FONT_SIZE_LABEL, color=ECMWF_COLOR,
-                                 ha="center", va="bottom")
+                                 ha="center", va="top")
 
     # --- Pressure + Cloud Cover ---
     ax_press.plot(ecmwf_times, ecmwf.pressure, color=ECMWF_COLOR, linewidth=1.2)
@@ -277,12 +299,12 @@ def render_right_panel(
             prob = f"{data.precip_probability[i]:.0f}%"
 
         draw.text((pad, y), hour, fill=TEXT_COLOR, font=font_small)
-        draw.text((pad + 45, y - 2), icon, fill=TEXT_COLOR, font=font_icon)
-        draw.text((pad + 68, y), temp, fill=TEXT_COLOR, font=font_small)
-        draw.text((pad + 100, y), w_dir, fill=TEXT_COLOR, font=font_small)
-        draw.text((pad + 115, y), wind, fill=TEXT_COLOR, font=font_small)
-        draw.text((pad + 148, y), mm, fill=ECMWF_COLOR, font=font_small)
-        draw.text((pad + 185, y), prob, fill=ECMWF_COLOR, font=font_small)
+        draw.text((pad + 42, y - 2), icon, fill=TEXT_COLOR, font=font_icon)
+        draw.text((pad + 64, y), temp, fill=TEXT_COLOR, font=font_small)
+        draw.text((pad + 96, y), w_dir, fill=TEXT_COLOR, font=font_small)
+        draw.text((pad + 110, y), wind, fill=TEXT_COLOR, font=font_small)
+        draw.text((pad + 140, y), mm, fill=ECMWF_COLOR, font=font_small)
+        draw.text((pad + 175, y), prob, fill=ICON_EU_COLOR, font=font_small)
 
         y += row_h
 
