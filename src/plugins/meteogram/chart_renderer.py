@@ -341,16 +341,40 @@ def render_right_panel(
 def _render_synoptic_panel(chart_data: bytes, width: int, height: int) -> Image.Image:
     """Render UKMO surface pressure analysis chart fitted to the left panel.
 
-    The chart is already black & white — just resize to fit.
+    Crops the top 2/3 of the original chart (the map area) and scales it
+    up to fill the panel.  The Crown Copyright line is extracted from the
+    bottom of the original image and placed at the bottom-right.
     """
     src = Image.open(BytesIO(chart_data)).convert("RGB")
-    # Fit to panel keeping aspect ratio
-    src.thumbnail((width, height), Image.LANCZOS)
+    orig_w, orig_h = src.size
+
+    # --- extract Crown Copyright strip from the bottom ~5% of the original ---
+    copy_strip_h = max(20, orig_h // 20)
+    copyright_strip = src.crop((0, orig_h - copy_strip_h, orig_w, orig_h))
+
+    # --- crop top 2/3 of the chart (the actual map) ---
+    map_h = int(orig_h * 2 / 3)
+    map_crop = src.crop((0, 0, orig_w, map_h))
+
+    # --- scale the map crop to fill the panel ---
+    map_crop.thumbnail((width, height), Image.LANCZOS)
 
     panel = Image.new("RGB", (width, height), (255, 255, 255))
-    x_off = (width - src.width) // 2
-    y_off = (height - src.height) // 2
-    panel.paste(src, (x_off, y_off))
+    x_off = (width - map_crop.width) // 2
+    y_off = (height - map_crop.height) // 2
+    panel.paste(map_crop, (x_off, y_off))
+
+    # --- paste copyright strip at bottom-right ---
+    strip_target_w = min(width // 3, copyright_strip.width)
+    strip_scale = strip_target_w / copyright_strip.width
+    strip_target_h = max(12, int(copyright_strip.height * strip_scale))
+    copyright_small = copyright_strip.resize(
+        (strip_target_w, strip_target_h), Image.LANCZOS
+    )
+    panel.paste(
+        copyright_small,
+        (width - strip_target_w - 4, height - strip_target_h - 2),
+    )
 
     return panel
 
