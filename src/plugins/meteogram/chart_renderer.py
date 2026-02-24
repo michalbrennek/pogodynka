@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.gridspec as gridspec
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 
 from plugins.meteogram.data_fetcher import ModelData, AstroData
 from plugins.meteogram.weather_icons import wmo_to_icon, wmo_to_color, wmo_to_description, wind_direction_arrow
@@ -339,58 +339,50 @@ def render_right_panel(
 
 
 def _render_synoptic_panel(chart_data: bytes, width: int, height: int) -> Image.Image:
-    """Render UKMO synoptic chart cropped to Poland region, filling the panel.
+    """Render UKMO synoptic chart zoomed into Poland region.
 
-    Crops a region centered on Poland (approx 52N 20E) from the UKMO chart,
-    matching the panel aspect ratio, then scales to fill the available space.
-    Crown Copyright is extracted from the original and placed bottom-right.
+    Scales the whole chart up so that the Poland area fills the panel,
+    positions so Poland is centered, and lets the rest overflow.
+    Lines are thickened for e-ink readability.
+    Crown Copyright placed bottom-right.
     """
-    src = Image.open(BytesIO(chart_data)).convert("RGB")
+    src = Image.open(BytesIO(chart_data)).convert("L")
     orig_w, orig_h = src.size
 
-    # --- extract Crown Copyright strip from bottom-right of original ---
+    # --- extract copyright from bottom-right before processing ---
     cr_w = int(orig_w * 0.25)
     cr_h = max(20, orig_h // 16)
     copyright_strip = src.crop((orig_w - cr_w, orig_h - cr_h, orig_w, orig_h))
 
-    # --- crop region centered on Poland, matching panel aspect ratio ---
-    # Poland is approx at 65% x, 35% y of the UKMO chart
-    center_x = int(orig_w * 0.65)
-    center_y = int(orig_h * 0.35)
+    # --- zoom: scale chart so ~55% of its width maps to panel width ---
+    zoom = width / (orig_w * 0.55)
+    scaled_w = int(orig_w * zoom)
+    scaled_h = int(orig_h * zoom)
+    zoomed = src.resize((scaled_w, scaled_h), Image.LANCZOS)
 
-    panel_ratio = width / height  # target aspect ratio
-    # Use ~55% of chart width for good surrounding context
-    crop_w = int(orig_w * 0.55)
-    crop_h = int(crop_w / panel_ratio)
+    # --- position: Poland is at ~65% x, ~35% y of original chart ---
+    poland_x = int(scaled_w * 0.65)
+    poland_y = int(scaled_h * 0.35)
+    paste_x = width // 2 - poland_x
+    paste_y = height // 2 - poland_y
 
-    # Clamp to image bounds
-    left = max(0, center_x - crop_w // 2)
-    top = max(0, center_y - crop_h // 2)
-    right = min(orig_w, left + crop_w)
-    bottom = min(orig_h, top + crop_h)
-    # Re-adjust if clamped
-    left = max(0, right - crop_w)
-    top = max(0, bottom - crop_h)
+    # Compose onto white panel — overflow is naturally clipped
+    panel_gray = Image.new("L", (width, height), 255)
+    panel_gray.paste(zoomed, (paste_x, paste_y))
 
-    map_crop = src.crop((left, top, right, bottom))
+    # --- enhance for e-ink: threshold to pure B&W ---
+    arr = np.array(panel_gray)
+    bw = np.where(arr < 200, 0, 255).astype(np.uint8)
+    panel = Image.fromarray(bw).convert("RGB")
 
-    # --- scale to fill panel exactly ---
-    map_scaled = map_crop.resize((width, height), Image.LANCZOS)
-
-    panel = Image.new("RGB", (width, height), (255, 255, 255))
-    panel.paste(map_scaled, (0, 0))
-
-    # --- paste copyright at bottom-right ---
+    # --- copyright at bottom-right ---
     strip_target_w = min(width // 3, copyright_strip.width)
     strip_scale = strip_target_w / copyright_strip.width
     strip_target_h = max(12, int(copyright_strip.height * strip_scale))
-    copyright_small = copyright_strip.resize(
+    cr_small = copyright_strip.resize(
         (strip_target_w, strip_target_h), Image.LANCZOS
-    )
-    panel.paste(
-        copyright_small,
-        (width - strip_target_w - 4, height - strip_target_h - 2),
-    )
+    ).convert("RGB")
+    panel.paste(cr_small, (width - strip_target_w - 4, height - strip_target_h - 2))
 
     return panel
 
