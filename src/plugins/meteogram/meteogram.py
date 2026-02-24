@@ -1,7 +1,7 @@
 import logging
 import os
 from plugins.base_plugin.base_plugin import BasePlugin
-from plugins.meteogram.data_fetcher import fetch_ecmwf, fetch_icon_eu, LAT, LON
+from plugins.meteogram.data_fetcher import fetch_ecmwf, fetch_icon_eu, fetch_astro, LAT, LON
 from plugins.meteogram.chart_renderer import render_full_meteogram
 from plugins.meteogram.cache import MeteogramCache
 from PIL import Image
@@ -45,8 +45,11 @@ class Meteogram(BasePlugin):
                 logger.info("No new model data, returning cached image")
                 return Image.open(cached_path).convert("RGB")
 
+        # Fetch astronomical data (sunrise/sunset/moon)
+        astro = fetch_astro(lat, lon)
+
         # Render fresh meteogram
-        img = render_full_meteogram(ecmwf, icon_eu, dimensions)
+        img = render_full_meteogram(ecmwf, icon_eu, dimensions, astro)
 
         # Update cache
         self.cache.update("ECMWF", ecmwf_gen)

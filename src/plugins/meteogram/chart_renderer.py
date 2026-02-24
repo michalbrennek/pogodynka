@@ -11,7 +11,7 @@ import matplotlib.gridspec as gridspec
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-from plugins.meteogram.data_fetcher import ModelData
+from plugins.meteogram.data_fetcher import ModelData, AstroData
 from plugins.meteogram.weather_icons import wmo_to_icon, wmo_to_description
 
 logger = logging.getLogger(__name__)
@@ -176,6 +176,7 @@ def render_right_panel(
     width: int = 200,
     height: int = 480,
     model_info: str = "",
+    astro: Optional[AstroData] = None,
 ) -> Image.Image:
     """Render the right 1/4 sidebar with 24h hourly detail."""
     img = Image.new("RGB", (width, height), BG_COLOR)
@@ -205,6 +206,26 @@ def render_right_panel(
         y += 30
         draw.text((pad, y), desc, fill=ICON_EU_COLOR, font=font_medium)
         y += 22
+
+    # --- Astro info: moon phase, sunrise, sunset ---
+    if astro:
+        draw.line([(pad, y), (width - pad, y)], fill=TEXT_COLOR, width=1)
+        y += 4
+        # Moon phase
+        draw.text((pad, y), f"{astro.moon_icon} {astro.moon_name}", fill=TEXT_COLOR, font=font_small)
+        y += 18
+        # Sunrise / sunset
+        sun_rise = ""
+        sun_set = ""
+        if astro.sunrise:
+            t = astro.sunrise.split("T")[1][:5] if "T" in astro.sunrise else astro.sunrise
+            sun_rise = f"\u2600\ufe0f {t}"
+        if astro.sunset:
+            t = astro.sunset.split("T")[1][:5] if "T" in astro.sunset else astro.sunset
+            sun_set = f"\U0001f307 {t}"
+        draw.text((pad, y), sun_rise, fill=TEXT_COLOR, font=font_small)
+        draw.text((pad + 85, y), sun_set, fill=TEXT_COLOR, font=font_small)
+        y += 20
 
     # Separator line
     draw.line([(pad, y), (width - pad, y)], fill=TEXT_COLOR, width=1)
@@ -249,6 +270,7 @@ def render_full_meteogram(
     ecmwf: ModelData,
     icon_eu: Optional[ModelData],
     dimensions: tuple,
+    astro: Optional[AstroData] = None,
 ) -> Image.Image:
     """Compose the full 800x480 image: left meteogram + right sidebar."""
     total_w, total_h = dimensions
@@ -263,7 +285,7 @@ def render_full_meteogram(
     model_info = "ECMWF"
     if icon_eu:
         model_info = "ECMWF + ICON-EU"
-    right_img = render_right_panel(sidebar_data, right_w, total_h, model_info)
+    right_img = render_right_panel(sidebar_data, right_w, total_h, model_info, astro)
 
     # Composite
     full_img = left_img.copy()

@@ -119,3 +119,70 @@ def fetch_ecmwf(lat: float = LAT, lon: float = LON) -> Optional[ModelData]:
 
 def fetch_icon_eu(lat: float = LAT, lon: float = LON) -> Optional[ModelData]:
     return _fetch_model(ICON_EU_URL, lat, lon, "ICON-EU")
+
+
+# --- Astronomical data ---
+
+DAILY_URL = (
+    "https://api.open-meteo.com/v1/forecast"
+    "?latitude={lat}&longitude={lon}"
+    "&daily=sunrise,sunset"
+    "&timezone={tz}"
+    "&forecast_days=1"
+)
+
+
+@dataclass
+class AstroData:
+    sunrise: Optional[str] = None
+    sunset: Optional[str] = None
+    moon_phase: float = 0.0
+    moon_icon: str = ""
+    moon_name: str = ""
+
+
+def _compute_moon_phase(dt: datetime) -> tuple:
+    """Compute moon phase from date. Returns (phase 0-1, icon, name)."""
+    # Reference new moon: 2024-01-11 11:57 UTC
+    ref = datetime(2024, 1, 11, 11, 57)
+    days = (dt - ref).total_seconds() / 86400
+    cycle = 29.53059
+    phase = (days % cycle) / cycle
+
+    phases = [
+        (0.0625, "\U0001f311", "New Moon"),
+        (0.1875, "\U0001f312", "Waxing Crescent"),
+        (0.3125, "\U0001f313", "First Quarter"),
+        (0.4375, "\U0001f314", "Waxing Gibbous"),
+        (0.5625, "\U0001f315", "Full Moon"),
+        (0.6875, "\U0001f316", "Waning Gibbous"),
+        (0.8125, "\U0001f317", "Last Quarter"),
+        (0.9375, "\U0001f318", "Waning Crescent"),
+    ]
+    for threshold, icon, name in phases:
+        if phase < threshold:
+            return phase, icon, name
+    return phase, "\U0001f311", "New Moon"
+
+
+def fetch_astro(lat: float = LAT, lon: float = LON) -> AstroData:
+    """Fetch sunrise/sunset from Open-Meteo and compute moon phase."""
+    phase, icon, name = _compute_moon_phase(datetime.now())
+    astro = AstroData(moon_phase=phase, moon_icon=icon, moon_name=name)
+
+    url = DAILY_URL.format(lat=lat, lon=lon, tz=TIMEZONE)
+    try:
+        resp = requests.get(url, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
+        daily = data.get("daily", {})
+        sunrise_list = daily.get("sunrise", [])
+        sunset_list = daily.get("sunset", [])
+        if sunrise_list:
+            astro.sunrise = sunrise_list[0]
+        if sunset_list:
+            astro.sunset = sunset_list[0]
+    except Exception as e:
+        logger.error(f"Failed to fetch astro data: {e}")
+
+    return astro
