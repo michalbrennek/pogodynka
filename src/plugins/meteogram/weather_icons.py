@@ -71,3 +71,23 @@ def wmo_to_icon(code: int) -> str:
 
 def wmo_to_description(code: int) -> str:
     return _WMO_DESCRIPTIONS.get(code, "Unknown")
+
+
+# Wind direction arrows — shows where wind BLOWS TO
+# (meteorological convention: degrees = direction wind comes FROM)
+_WIND_ARROWS = [
+    "\u2193",  # 0° N  → blows south ↓
+    "\u2199",  # 45° NE → blows SW ↙
+    "\u2190",  # 90° E  → blows west ←
+    "\u2196",  # 135° SE → blows NW ↖
+    "\u2191",  # 180° S  → blows north ↑
+    "\u2197",  # 225° SW → blows NE ↗
+    "\u2192",  # 270° W  → blows east →
+    "\u2198",  # 315° NW → blows SE ↘
+]
+
+
+def wind_direction_arrow(degrees: float) -> str:
+    """Convert wind direction in degrees to an arrow character."""
+    idx = round(degrees / 45) % 8
+    return _WIND_ARROWS[idx]

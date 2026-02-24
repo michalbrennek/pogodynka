@@ -12,7 +12,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from plugins.meteogram.data_fetcher import ModelData, AstroData
-from plugins.meteogram.weather_icons import wmo_to_icon, wmo_to_description
+from plugins.meteogram.weather_icons import wmo_to_icon, wmo_to_description, wind_direction_arrow
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ def render_meteogram(
     """Render the left 3/4 meteogram panel with GridSpec layout:
     row 0 = legend bar, rows 1-4 = temp / precip / wind / pressure+cloud."""
     total_w, total_h = dimensions
-    left_w = int(total_w * 0.75)
+    left_w = int(total_w * 0.65)
 
     fig_w = left_w / DPI
     fig_h = total_h / DPI
@@ -129,7 +129,7 @@ def render_meteogram(
     ax_precip.set_ylim(bottom=0)
     ax_precip.grid(True, linestyle=":", linewidth=0.3, color=GRID_COLOR)
 
-    # --- Wind ---
+    # --- Wind + direction arrows ---
     ax_wind.plot(ecmwf_times, ecmwf.wind_speed, color=ECMWF_COLOR, linewidth=1.2)
     ax_wind.plot(ecmwf_times, ecmwf.wind_gusts, color=ECMWF_COLOR, linewidth=1.5,
                  linestyle="--", alpha=0.8)
@@ -140,6 +140,17 @@ def render_meteogram(
     ax_wind.set_ylabel("Wind (m/s)")
     ax_wind.set_ylim(bottom=0)
     ax_wind.grid(True, linestyle=":", linewidth=0.3, color=GRID_COLOR)
+
+    # Wind direction arrows along the top of the wind panel (every 3h)
+    if ecmwf.wind_direction:
+        step = 3
+        for i in range(0, len(ecmwf_times), step):
+            if i < len(ecmwf.wind_direction):
+                arrow = wind_direction_arrow(ecmwf.wind_direction[i])
+                ax_wind.annotate(arrow, (ecmwf_times[i], ecmwf.wind_gusts[i] if i < len(ecmwf.wind_gusts) else ecmwf.wind_speed[i]),
+                                 textcoords="offset points", xytext=(0, 4),
+                                 fontsize=FONT_SIZE_LABEL, color=ECMWF_COLOR,
+                                 ha="center", va="bottom")
 
     # --- Pressure + Cloud Cover ---
     ax_press.plot(ecmwf_times, ecmwf.pressure, color=ECMWF_COLOR, linewidth=1.2)
@@ -244,6 +255,7 @@ def render_right_panel(
     y += 6
 
     # --- Hourly rows (next 24h) ---
+    # Columns: HH:MM  icon  temp  dir+wind  precip  prob
     max_rows = min(24, len(data.times))
     row_h = min(20, (height - y - 10) // max_rows) if max_rows > 0 else 20
 
@@ -255,12 +267,22 @@ def render_right_panel(
         hour = time_str.split("T")[1][:5] if "T" in time_str else time_str
         icon = wmo_to_icon(data.weather_code[i]) if i < len(data.weather_code) else ""
         temp = f"{data.temperature[i]:.0f}\u00b0" if i < len(data.temperature) else ""
-        wind = f"{data.wind_speed[i]:.0f}m/s" if i < len(data.wind_speed) else ""
+        w_dir = wind_direction_arrow(data.wind_direction[i]) if i < len(data.wind_direction) else ""
+        wind = f"{data.wind_speed[i]:.0f}" if i < len(data.wind_speed) else ""
+        mm = ""
+        prob = ""
+        if i < len(data.precipitation) and data.precipitation[i] > 0:
+            mm = f"{data.precipitation[i]:.1f}"
+        if i < len(data.precip_probability) and data.precip_probability[i] > 0:
+            prob = f"{data.precip_probability[i]:.0f}%"
 
         draw.text((pad, y), hour, fill=TEXT_COLOR, font=font_small)
         draw.text((pad + 45, y - 2), icon, fill=TEXT_COLOR, font=font_icon)
-        draw.text((pad + 75, y), temp, fill=TEXT_COLOR, font=font_small)
+        draw.text((pad + 68, y), temp, fill=TEXT_COLOR, font=font_small)
+        draw.text((pad + 100, y), w_dir, fill=TEXT_COLOR, font=font_small)
         draw.text((pad + 115, y), wind, fill=TEXT_COLOR, font=font_small)
+        draw.text((pad + 148, y), mm, fill=ECMWF_COLOR, font=font_small)
+        draw.text((pad + 185, y), prob, fill=ECMWF_COLOR, font=font_small)
 
         y += row_h
 
@@ -275,7 +297,7 @@ def render_full_meteogram(
 ) -> Image.Image:
     """Compose the full 800x480 image: left meteogram + right sidebar."""
     total_w, total_h = dimensions
-    left_w = int(total_w * 0.75)
+    left_w = int(total_w * 0.65)
     right_w = total_w - left_w
 
     # Render left panel (meteogram charts)
