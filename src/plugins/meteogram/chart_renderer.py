@@ -210,3 +210,30 @@ def render_right_panel(
         draw.text((pad, y), model_info, fill=TEXT_COLOR, font=font_small)
 
     return img
+
+
+def render_full_meteogram(
+    ecmwf: ModelData,
+    metno: Optional[ModelData],
+    dimensions: tuple,
+) -> Image.Image:
+    """Compose the full 800x480 image: left meteogram + right sidebar."""
+    total_w, total_h = dimensions
+    left_w = int(total_w * 0.75)
+    right_w = total_w - left_w
+
+    # Render left panel (meteogram charts)
+    left_img = render_meteogram(ecmwf, metno, dimensions)
+
+    # Render right panel (24h detail) using the best short-range data
+    sidebar_data = metno if metno else ecmwf
+    model_info = "ECMWF"
+    if metno:
+        model_info = "ECMWF + MetNo"
+    right_img = render_right_panel(sidebar_data, right_w, total_h, model_info)
+
+    # Composite
+    full_img = left_img.copy()
+    full_img.paste(right_img, (left_w, 0))
+
+    return full_img
