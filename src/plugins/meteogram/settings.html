@@ -1,0 +1,50 @@
+<div class="form-group">
+    <label>Temperature Units</label>
+    <select name="temp_units" class="form-control">
+        <option value="celsius">Celsius (°C)</option>
+        <option value="fahrenheit">Fahrenheit (°F)</option>
+    </select>
+</div>
+
+<div class="form-group">
+    <label>Wind Units</label>
+    <select name="wind_units" class="form-control">
+        <option value="ms">m/s</option>
+        <option value="kmh">km/h</option>
+        <option value="knots">knots</option>
+    </select>
+</div>
+
+<div class="form-group">
+    <label>Forecast Range (days)</label>
+    <select name="forecast_days" class="form-control">
+        <option value="7">7 days</option>
+        <option value="10" selected>10 days</option>
+        <option value="14">14 days</option>
+    </select>
+</div>
+
+<div class="form-group">
+    <label>
+        <input type="checkbox" name="show_cloud_cover" value="true" checked>
+        Show cloud cover
+    </label>
+</div>
+
+<div class="form-group">
+    <label>
+        <input type="checkbox" name="show_gusts" value="true" checked>
+        Show wind gusts
+    </label>
+</div>
+
+<script>
+if (typeof loadPluginSettings !== 'undefined' && loadPluginSettings) {
+    var s = pluginSettings;
+    if (s.temp_units) document.querySelector('[name="temp_units"]').value = s.temp_units;
+    if (s.wind_units) document.querySelector('[name="wind_units"]').value = s.wind_units;
+    if (s.forecast_days) document.querySelector('[name="forecast_days"]').value = s.forecast_days;
+    if (s.show_cloud_cover === "false") document.querySelector('[name="show_cloud_cover"]').checked = false;
+    if (s.show_gusts === "false") document.querySelector('[name="show_gusts"]').checked = false;
+}
+</script>
