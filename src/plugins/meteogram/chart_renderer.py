@@ -222,20 +222,20 @@ def render_right_panel(
         # Moon phase
         draw.text((pad, y), f"{astro.moon_icon} {astro.moon_name}", fill=TEXT_COLOR, font=font_small)
         y += 18
-        # Sunrise / sunset (☀ = U+2600, ▼ = down)
+        # Sunrise / sunset
         if astro.sunrise:
-            draw.text((pad, y), f"\u2600\u2191{_extract_time(astro.sunrise)}",
+            draw.text((pad, y), f"SR {_extract_time(astro.sunrise)}",
                        fill=TEXT_COLOR, font=font_small)
         if astro.sunset:
-            draw.text((pad + 85, y), f"\u2600\u2193{_extract_time(astro.sunset)}",
+            draw.text((pad + 85, y), f"SS {_extract_time(astro.sunset)}",
                        fill=TEXT_COLOR, font=font_small)
         y += 18
-        # Moonrise / moonset (☽ = U+263D)
+        # Moonrise / moonset
         if astro.moonrise:
-            draw.text((pad, y), f"\u263D\u2191{_extract_time(astro.moonrise)}",
+            draw.text((pad, y), f"MR {_extract_time(astro.moonrise)}",
                        fill=TEXT_COLOR, font=font_small)
         if astro.moonset:
-            draw.text((pad + 85, y), f"\u263D\u2193{_extract_time(astro.moonset)}",
+            draw.text((pad + 85, y), f"MS {_extract_time(astro.moonset)}",
                        fill=TEXT_COLOR, font=font_small)
         y += 20
 
