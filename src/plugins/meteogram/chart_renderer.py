@@ -74,6 +74,13 @@ def render_meteogram(
     # --- Legend row ---
     ax_legend = fig.add_subplot(gs[0])
     ax_legend.axis("off")
+
+    # Updated timestamp on the left
+    now_str = datetime.now().strftime("%H:%M")
+    ax_legend.text(0.0, 0.5, f"Updated: {now_str}",
+                   transform=ax_legend.transAxes, fontsize=FONT_SIZE_LABEL,
+                   va="center", ha="left")
+
     legend_items = [
         plt.Line2D([0], [0], color=ECMWF_COLOR, linewidth=2, label="ECMWF"),
     ]
@@ -88,7 +95,7 @@ def render_meteogram(
         plt.Line2D([0], [0], color=ACCENT_COLOR, linewidth=6, alpha=0.35, label="cloud"),
     )
     ax_legend.legend(
-        handles=legend_items, loc="center", ncol=len(legend_items),
+        handles=legend_items, loc="center right", ncol=len(legend_items),
         fontsize=FONT_SIZE_LABEL, frameon=False,
     )
 
@@ -207,24 +214,29 @@ def render_right_panel(
         draw.text((pad, y), desc, fill=ICON_EU_COLOR, font=font_medium)
         y += 22
 
-    # --- Astro info: moon phase, sunrise, sunset ---
+    # --- Astro info: moon phase, sunrise/sunset, moonrise/moonset ---
     if astro:
+        from plugins.meteogram.data_fetcher import _extract_time
         draw.line([(pad, y), (width - pad, y)], fill=TEXT_COLOR, width=1)
         y += 4
         # Moon phase
         draw.text((pad, y), f"{astro.moon_icon} {astro.moon_name}", fill=TEXT_COLOR, font=font_small)
         y += 18
-        # Sunrise / sunset
-        sun_rise = ""
-        sun_set = ""
+        # Sunrise / sunset (☀ = U+2600, ▼ = down)
         if astro.sunrise:
-            t = astro.sunrise.split("T")[1][:5] if "T" in astro.sunrise else astro.sunrise
-            sun_rise = f"\u2600\ufe0f {t}"
+            draw.text((pad, y), f"\u2600\u2191{_extract_time(astro.sunrise)}",
+                       fill=TEXT_COLOR, font=font_small)
         if astro.sunset:
-            t = astro.sunset.split("T")[1][:5] if "T" in astro.sunset else astro.sunset
-            sun_set = f"\U0001f307 {t}"
-        draw.text((pad, y), sun_rise, fill=TEXT_COLOR, font=font_small)
-        draw.text((pad + 85, y), sun_set, fill=TEXT_COLOR, font=font_small)
+            draw.text((pad + 85, y), f"\u2600\u2193{_extract_time(astro.sunset)}",
+                       fill=TEXT_COLOR, font=font_small)
+        y += 18
+        # Moonrise / moonset (☽ = U+263D)
+        if astro.moonrise:
+            draw.text((pad, y), f"\u263D\u2191{_extract_time(astro.moonrise)}",
+                       fill=TEXT_COLOR, font=font_small)
+        if astro.moonset:
+            draw.text((pad + 85, y), f"\u263D\u2193{_extract_time(astro.moonset)}",
+                       fill=TEXT_COLOR, font=font_small)
         y += 20
 
     # Separator line
@@ -233,16 +245,16 @@ def render_right_panel(
 
     # --- Hourly rows (next 24h) ---
     max_rows = min(24, len(data.times))
-    row_h = min(20, (height - y - 55) // max_rows) if max_rows > 0 else 20
+    row_h = min(20, (height - y - 10) // max_rows) if max_rows > 0 else 20
 
     for i in range(max_rows):
-        if y + row_h > height - 45:
+        if y + row_h > height - 4:
             break
 
         time_str = data.times[i]
         hour = time_str.split("T")[1][:5] if "T" in time_str else time_str
         icon = wmo_to_icon(data.weather_code[i]) if i < len(data.weather_code) else ""
-        temp = f"{data.temperature[i]:.0f}°" if i < len(data.temperature) else ""
+        temp = f"{data.temperature[i]:.0f}\u00b0" if i < len(data.temperature) else ""
         wind = f"{data.wind_speed[i]:.0f}m/s" if i < len(data.wind_speed) else ""
 
         draw.text((pad, y), hour, fill=TEXT_COLOR, font=font_small)
@@ -251,17 +263,6 @@ def render_right_panel(
         draw.text((pad + 115, y), wind, fill=TEXT_COLOR, font=font_small)
 
         y += row_h
-
-    # --- Footer with model info ---
-    y = height - 40
-    draw.line([(pad, y), (width - pad, y)], fill=TEXT_COLOR, width=1)
-    y += 4
-
-    now_str = datetime.now().strftime("Updated: %H:%M")
-    draw.text((pad, y), now_str, fill=TEXT_COLOR, font=font_small)
-    y += 14
-    if model_info:
-        draw.text((pad, y), model_info, fill=TEXT_COLOR, font=font_small)
 
     return img
 

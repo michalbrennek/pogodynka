@@ -131,14 +131,34 @@ DAILY_URL = (
     "&forecast_days=1"
 )
 
+METNO_MOON_URL = (
+    "https://api.met.no/weatherapi/sunrise/3.0/moon"
+    "?lat={lat}&lon={lon}&date={date}&offset={offset}"
+)
+
 
 @dataclass
 class AstroData:
     sunrise: Optional[str] = None
     sunset: Optional[str] = None
+    moonrise: Optional[str] = None
+    moonset: Optional[str] = None
     moon_phase: float = 0.0
     moon_icon: str = ""
     moon_name: str = ""
+
+
+# DejaVu Sans compatible moon symbols (U+263D/E range)
+_MOON_PHASES = [
+    (0.0625, "\u25CF", "New Moon"),        # ● (filled circle)
+    (0.1875, "\u263D", "Waxing Crescent"), # ☽
+    (0.3125, "\u25D0", "First Quarter"),   # ◐
+    (0.4375, "\u263D", "Waxing Gibbous"),  # ☽
+    (0.5625, "\u25CB", "Full Moon"),       # ○ (open circle)
+    (0.6875, "\u263E", "Waning Gibbous"),  # ☾
+    (0.8125, "\u25D1", "Last Quarter"),    # ◑
+    (0.9375, "\u263E", "Waning Crescent"), # ☾
+]
 
 
 def _compute_moon_phase(dt: datetime) -> tuple:
@@ -149,27 +169,25 @@ def _compute_moon_phase(dt: datetime) -> tuple:
     cycle = 29.53059
     phase = (days % cycle) / cycle
 
-    phases = [
-        (0.0625, "\U0001f311", "New Moon"),
-        (0.1875, "\U0001f312", "Waxing Crescent"),
-        (0.3125, "\U0001f313", "First Quarter"),
-        (0.4375, "\U0001f314", "Waxing Gibbous"),
-        (0.5625, "\U0001f315", "Full Moon"),
-        (0.6875, "\U0001f316", "Waning Gibbous"),
-        (0.8125, "\U0001f317", "Last Quarter"),
-        (0.9375, "\U0001f318", "Waning Crescent"),
-    ]
-    for threshold, icon, name in phases:
+    for threshold, icon, name in _MOON_PHASES:
         if phase < threshold:
             return phase, icon, name
-    return phase, "\U0001f311", "New Moon"
+    return phase, "\u25CF", "New Moon"
+
+
+def _extract_time(iso_str: str) -> str:
+    """Extract HH:MM from an ISO timestamp like '2026-02-24T06:45+01:00'."""
+    if "T" in iso_str:
+        return iso_str.split("T")[1][:5]
+    return iso_str
 
 
 def fetch_astro(lat: float = LAT, lon: float = LON) -> AstroData:
-    """Fetch sunrise/sunset from Open-Meteo and compute moon phase."""
+    """Fetch sunrise/sunset + moonrise/moonset and compute moon phase."""
     phase, icon, name = _compute_moon_phase(datetime.now())
     astro = AstroData(moon_phase=phase, moon_icon=icon, moon_name=name)
 
+    # Sunrise/sunset from Open-Meteo
     url = DAILY_URL.format(lat=lat, lon=lon, tz=TIMEZONE)
     try:
         resp = requests.get(url, timeout=15)
@@ -183,6 +201,24 @@ def fetch_astro(lat: float = LAT, lon: float = LON) -> AstroData:
         if sunset_list:
             astro.sunset = sunset_list[0]
     except Exception as e:
-        logger.error(f"Failed to fetch astro data: {e}")
+        logger.error(f"Failed to fetch sun data: {e}")
+
+    # Moonrise/moonset from MET Norway astronomical API
+    today = datetime.now().strftime("%Y-%m-%d")
+    moon_url = METNO_MOON_URL.format(lat=lat, lon=lon, date=today, offset="%2B01:00")
+    try:
+        resp = requests.get(moon_url, timeout=15,
+                            headers={"User-Agent": "pogodynka/1.0"})
+        resp.raise_for_status()
+        data = resp.json()
+        props = data.get("properties", {})
+        mr = props.get("moonrise", {})
+        ms = props.get("moonset", {})
+        if mr and "time" in mr:
+            astro.moonrise = mr["time"]
+        if ms and "time" in ms:
+            astro.moonset = ms["time"]
+    except Exception as e:
+        logger.error(f"Failed to fetch moon data: {e}")
 
     return astro
